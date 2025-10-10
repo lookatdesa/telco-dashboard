@@ -1,0 +1,15 @@
+# Core
+streamlit==1.36.0
+pandas==2.2.2
+numpy==2.0.0
+
+# Visualizzazione
+plotly==5.24.1
+altair==5.4.1
+
+# Autenticazione
+streamlit-authenticator==0.2.3
+
+# File handling
+openpyxl==3.1.2
+xlsxwriter==3.1.9
