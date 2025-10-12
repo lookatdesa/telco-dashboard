@@ -237,14 +237,14 @@ if len(contract_ids) > 0:
     
     with tab2:
         st.markdown("#### 💳 Payment Terms")
-        st.text_area("", value=selected_contract['payment_terms'] if pd.notna(selected_contract['payment_terms']) else "Non specificato", height=150, disabled=True)
+        st.text_area("Payment Terms", value=selected_contract['payment_terms'] if pd.notna(selected_contract['payment_terms']) else "Non specificato", height=150, disabled=True, label_visibility="collapsed")
         
         st.markdown("#### ⚠️ Penalties")
-        st.text_area("", value=selected_contract['penalties'] if pd.notna(selected_contract['penalties']) else "Non specificate", height=150, disabled=True, key="penalties")
-        
+        st.text_area("Penalties", value=selected_contract['penalties'] if pd.notna(selected_contract['penalties']) else "Non specificate", height=150, disabled=True, key="penalties", label_visibility="collapsed")
+
         st.markdown("#### 📋 Ending Clauses")
-        st.text_area("", value=selected_contract['ending_clauses'] if pd.notna(selected_contract['ending_clauses']) else "Non specificate", height=200, disabled=True, key="clauses")
-    
+        st.text_area("Ending Clauses", value=selected_contract['ending_clauses'] if pd.notna(selected_contract['ending_clauses']) else "Non specificate", height=200, disabled=True, key="clauses", label_visibility="collapsed")
+        
     with tab3:
         st.markdown("#### 📦 Items del Contratto")
         
