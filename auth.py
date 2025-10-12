@@ -8,7 +8,6 @@ from pathlib import Path
 
 def load_config():
     """Carica la configurazione dal file config.yml"""
-    # Usa percorso relativo
     config_path = Path(__file__).parent / "config.yml"
     try:
         with open(config_path, "r", encoding="utf-8") as file:
@@ -35,20 +34,23 @@ def init_authenticator():
 
 
 def login_page(form_key: str = "login_default"):
-    """Mostra la pagina di login e gestisce l'autenticazione (solo v0.4+)"""
+    """Mostra la pagina di login e gestisce l'autenticazione"""
     # Se già autenticato, esci subito
     if st.session_state.get("authentication_status"):
         return True
 
     authenticator, _ = init_authenticator()
 
-    # singola chiamata, con key univoca per pagina
-    authenticator.login(key=form_key)
+    # Login con key univoca per pagina
+    name, authentication_status, username = authenticator.login(key=form_key)
 
-    # controllo stato dal session_state
-    if st.session_state.get("authentication_status"):
+    # Salva nello stato
+    if authentication_status:
+        st.session_state["authentication_status"] = True
+        st.session_state["name"] = name
+        st.session_state["username"] = username
         return True
-    elif st.session_state.get("authentication_status") is False:
+    elif authentication_status is False:
         st.error("❌ Username o password errati")
     else:
         st.warning("⏳ Inserisci username e password per accedere")
@@ -60,10 +62,19 @@ def logout_button(key: str = "logout_default"):
     """Mostra il pulsante di logout nella sidebar"""
     if not st.session_state.get("authentication_status"):
         return
+    
     authenticator, _ = init_authenticator()
+    
     with st.sidebar:
         st.markdown("---")
         if st.session_state.get("name"):
             st.markdown(f"👤 **Utente:** {st.session_state['name']}")
             st.caption(f"Username: {st.session_state.get('username', 'N/A')}")
-        authenticator.logout(button_name="🔓 Logout", location="sidebar", key=key)
+        
+        # Logout button
+        if st.button("🔓 Logout", key=key, use_container_width=True):
+            # Reset session state
+            st.session_state["authentication_status"] = None
+            st.session_state["name"] = None
+            st.session_state["username"] = None
+            st.rerun()
