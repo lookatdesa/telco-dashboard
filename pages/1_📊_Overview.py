@@ -18,7 +18,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# pages/1_📊_Overview.py
+# Autenticazione
 if not login_page(form_key="login_overview"):
     st.stop()
 
@@ -36,24 +36,27 @@ ITEM_TYPE_COLORS = {
     'SERVICE': '#e67e22'
 }
 
+# Directory base
+BASE_DIR = Path(__file__).parent.parent
+DATA_DIR = BASE_DIR / 'data'
+
 # Funzione di caricamento dati con caching
 @st.cache_data
 def load_data():
     """Carica tutti i dataset necessari"""
     try:
-        contracts = pd.read_csv(r'C:\code\telco-dashboard\data\contracts.csv')
-        items = pd.read_csv(r'C:\code\telco-dashboard\data\items.csv')
-        suppliers = pd.read_csv(r'C:\code\telco-dashboard\data\suppliers.csv')
+        contracts = pd.read_csv(DATA_DIR / 'contracts.csv')
+        items = pd.read_csv(DATA_DIR / 'items.csv')
+        suppliers = pd.read_csv(DATA_DIR / 'suppliers.csv')
         
         # Conversione date (rimuove timezone se presente)
         date_columns = ['start_date', 'end_date']
         for col in date_columns:
             if col in contracts.columns:
                 contracts[col] = pd.to_datetime(contracts[col], errors='coerce', utc=True)
-                # Converti a timezone-naive
                 contracts[col] = contracts[col].dt.tz_localize(None)
         
-        # Calcolo status contratti (usa datetime senza timezone)
+        # Calcolo status contratti
         today = pd.Timestamp.now().tz_localize(None)
         contracts['status'] = contracts['end_date'].apply(
             lambda x: 'Scaduto' if pd.notna(x) and x < today 
@@ -113,7 +116,6 @@ with col1:
 
 with col2:
     total_suppliers = len(suppliers_df)
-    # Top supplier
     supplier_contracts = contracts_df.groupby('supplier').size()
     top_supplier = supplier_contracts.idxmax() if len(supplier_contracts) > 0 else "N/A"
     st.metric(
@@ -293,7 +295,6 @@ with col_export1:
 
 with col_export2:
     if st.button("📥 Download Excel", use_container_width=True):
-        # Creazione Excel con multiple sheets
         from io import BytesIO
         output = BytesIO()
         

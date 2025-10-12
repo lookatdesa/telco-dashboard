@@ -10,27 +10,29 @@ from auth import login_page, logout_button
 
 st.set_page_config(page_title="Contratti", page_icon="📋", layout="wide")
 
-# pages/2_📋_Contratti.py
+# Autenticazione
 if not login_page(form_key="login_contratti"):
     st.stop()
 
 logout_button()
 
+# Directory base
+BASE_DIR = Path(__file__).parent.parent
+DATA_DIR = BASE_DIR / 'data'
+
 # Caricamento dati
 @st.cache_data
 def load_data():
-    contracts = pd.read_csv(r'C:\code\telco-dashboard\data\contracts.csv')
-    items = pd.read_csv(r'C:\code\telco-dashboard\data\items.csv')
+    contracts = pd.read_csv(DATA_DIR / 'contracts.csv')
+    items = pd.read_csv(DATA_DIR / 'items.csv')
     
-    # Conversione date (rimuove timezone)
+    # Conversione date
     contracts['start_date'] = pd.to_datetime(contracts['start_date'], errors='coerce', utc=True)
     contracts['end_date'] = pd.to_datetime(contracts['end_date'], errors='coerce', utc=True)
-    
-    # Converti a timezone-naive
     contracts['start_date'] = contracts['start_date'].dt.tz_localize(None)
     contracts['end_date'] = contracts['end_date'].dt.tz_localize(None)
     
-    # Calcolo status (usa datetime senza timezone)
+    # Calcolo status
     today = pd.Timestamp.now().tz_localize(None)
     contracts['status'] = contracts['end_date'].apply(
         lambda x: 'Scaduto' if pd.notna(x) and x < today 
@@ -55,14 +57,9 @@ with col_f1:
     search_contract = st.text_input("🔢 Numero Contratto", placeholder="Es: 7010148320")
 
 with col_f2:
-    # Carica suppliers per avere canonical_name
-    suppliers_df = pd.read_csv(r'C:\code\telco-dashboard\data\suppliers.csv')
-    
-    # Crea mapping supplier -> canonical_name
+    suppliers_df = pd.read_csv(DATA_DIR / 'suppliers.csv')
     supplier_mapping = dict(zip(suppliers_df['display_name'], suppliers_df['canonical_name']))
     supplier_mapping.update(dict(zip(suppliers_df['supplier_name'], suppliers_df['canonical_name'])))
-    
-    # Aggiungi canonical_name ai contratti
     contracts_df['canonical_name'] = contracts_df['supplier'].map(supplier_mapping).fillna(contracts_df['supplier'])
     
     canonical_names = ['Tutti'] + sorted(contracts_df['canonical_name'].dropna().unique().tolist())
@@ -70,7 +67,7 @@ with col_f2:
 
 with col_f3:
     domains_list = ['Tutti'] + sorted(contracts_df['contract_domain'].dropna().unique().tolist())
-    selected_domain = st.selectbox("📁 Dominio", domains_list)
+    selected_domain = st.selectbox("🏷️ Dominio", domains_list)
 
 with col_f4:
     status_list = ['Tutti', 'Attivo', 'In scadenza', 'Scaduto']
@@ -79,7 +76,6 @@ with col_f4:
 with col_f5:
     show_all_versions = st.checkbox("🔄 Mostra tutte le versioni", value=False)
 
-# Ricerca full-text
 search_text = st.text_input("🔎 Ricerca full-text", placeholder="Cerca in oggetto, termini, clausole...")
 
 st.markdown("---")
@@ -107,25 +103,20 @@ if search_text:
         filtered_df['penalties'].astype(str).str.lower().str.contains(search_text_lower, na=False)
     ]
 
-# Gestione versioni
 if not show_all_versions:
-    # Mostra solo versione più recente per ogni contract_number
     filtered_df = filtered_df.sort_values('version', ascending=False).groupby('contract_id').first().reset_index()
 
 # Tabella contratti
 st.subheader(f"📋 Contratti ({len(filtered_df)} risultati)")
 
-# Preparazione dati per visualizzazione
 display_df = filtered_df.copy()
 display_df['start_date_fmt'] = display_df['start_date'].dt.strftime('%d/%m/%Y')
 display_df['end_date_fmt'] = display_df['end_date'].dt.strftime('%d/%m/%Y')
 display_df['total_amount_fmt'] = display_df['total_amount'].apply(lambda x: f"€{x:,.2f}" if pd.notna(x) else "N/A")
 
-# Badge status con emoji
 status_emoji = {'Attivo': '🟢', 'In scadenza': '🟡', 'Scaduto': '🔴'}
 display_df['status_badge'] = display_df['status'].apply(lambda x: f"{status_emoji.get(x, '')} {x}")
 
-# Mostra tabella
 columns_to_show = ['contract_id', 'version', 'supplier', 'contract_domain', 'contract_subject', 
                    'start_date_fmt', 'end_date_fmt', 'total_amount_fmt', 'number_of_items', 'status_badge']
 
@@ -150,10 +141,9 @@ st.dataframe(
 
 st.markdown("---")
 
-# Selezione contratto per dettaglio
+# Dettaglio Contratto
 st.subheader("📄 Dettaglio Contratto")
 
-# Selezione contract_id
 contract_ids = filtered_df['contract_id'].unique().tolist()
 if len(contract_ids) > 0:
     selected_contract_id = st.selectbox(
@@ -162,7 +152,6 @@ if len(contract_ids) > 0:
         format_func=lambda x: f"{x} - {filtered_df[filtered_df['contract_id']==x].iloc[0]['supplier']}"
     )
     
-    # Gestione versioni del contratto selezionato
     contract_versions = contracts_df[contracts_df['contract_id'] == selected_contract_id].sort_values('version', ascending=False)
     
     col_ver1, col_ver2 = st.columns([3, 1])
@@ -179,14 +168,11 @@ if len(contract_ids) > 0:
             format_func=lambda x: f"v{x}" + (" (latest)" if x == max(versions_list) else "")
         )
     
-    # Mostra warning se non è latest
     if selected_version != max(versions_list):
         st.warning(f"⚠️ Stai visualizzando la versione {selected_version} (non corrente)")
     
-    # Recupera il contratto selezionato
     selected_contract = contract_versions[contract_versions['version'] == selected_version].iloc[0]
     
-    # Header del contratto
     st.markdown("### 📋 Informazioni Generali")
     
     col_h1, col_h2, col_h3 = st.columns(3)
@@ -204,8 +190,7 @@ if len(contract_ids) > 0:
         status_emoji_map = {'Attivo': '🟢', 'In scadenza': '🟡', 'Scaduto': '🔴'}
         st.metric("Status", f"{status_emoji_map.get(selected_contract['status'], '')} {selected_contract['status']}")
     
-    # Tabs per organizzare le informazioni
-    tab1, tab2, tab3, tab4 = st.tabs(["📝 Overview", "💰 Termini Economici", "📦 Items", "🔄 Storico Versioni"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📝 Overview", "💰 Termini Economici", "📦 Items", "📄 Storico Versioni"])
     
     with tab1:
         st.markdown("#### Oggetto del Contratto")
@@ -263,11 +248,9 @@ if len(contract_ids) > 0:
     with tab3:
         st.markdown("#### 📦 Items del Contratto")
         
-        # Filtra items per questo contratto
         contract_items = items_df[items_df['contract_id'] == selected_contract['contract_id']].copy()
         
         if len(contract_items) > 0:
-            # Opzioni raggruppamento
             col_g1, col_g2 = st.columns([2, 2])
             
             with col_g1:
@@ -277,7 +260,6 @@ if len(contract_ids) > 0:
                 st.metric("Totale Items", len(contract_items))
                 st.metric("Valore Totale Items", f"€{contract_items['total_price'].sum():,.2f}")
             
-            # Applicazione raggruppamento
             if group_by != "Nessuno":
                 if group_by == "Item Type":
                     grouped = contract_items.groupby('item_type').agg({
@@ -288,18 +270,15 @@ if len(contract_ids) > 0:
                     st.dataframe(grouped, hide_index=True)
                     st.markdown("---")
             
-            # Tabella dettagliata
             st.markdown("##### Dettaglio Items")
             
             display_items = contract_items.copy()
             
-            # Badge per item_type
             type_emoji = {'HARDWARE': '🔵', 'SOFTWARE': '🟣', 'SERVICE': '🟠'}
             display_items['type_badge'] = display_items['item_type'].apply(
                 lambda x: f"{type_emoji.get(x, '')} {x}" if pd.notna(x) else "N/A"
             )
             
-            # Formattazione prezzi
             display_items['unit_price_fmt'] = display_items['unit_price'].apply(
                 lambda x: f"€{x:,.2f}" if pd.notna(x) and x > 0 else "N/A"
             )
@@ -326,7 +305,6 @@ if len(contract_ids) > 0:
                 height=400
             )
             
-            # Export items del contratto
             if st.button("📥 Esporta Items di questo contratto (Excel)"):
                 from io import BytesIO
                 output = BytesIO()
@@ -343,10 +321,9 @@ if len(contract_ids) > 0:
             st.warning("⚠️ Nessun item trovato per questo contratto")
     
     with tab4:
-        st.markdown("#### 🔄 Timeline Versioni")
+        st.markdown("#### 📄 Timeline Versioni")
         
         if len(contract_versions) > 1:
-            # Timeline versioni
             for idx, row in contract_versions.iterrows():
                 col_t1, col_t2, col_t3 = st.columns([1, 3, 2])
                 
@@ -367,7 +344,6 @@ if len(contract_ids) > 0:
                 
                 st.markdown("---")
             
-            # Comparatore versioni
             st.markdown("#### 🔍 Comparatore Versioni")
             
             col_c1, col_c2 = st.columns(2)
@@ -407,7 +383,6 @@ if len(contract_ids) > 0:
                 comparison_df = pd.DataFrame(comparison_data)
                 st.dataframe(comparison_df, hide_index=True, use_container_width=True)
                 
-                # Delta items
                 items_a = items_df[items_df['contract_id'] == contract_a['contract_id']]
                 items_b = items_df[items_df['contract_id'] == contract_b['contract_id']]
                 

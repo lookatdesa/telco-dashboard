@@ -15,7 +15,7 @@ from auth import login_page, logout_button
 
 st.set_page_config(page_title="Suppliers", page_icon="🏢", layout="wide")
 
-# pages/4_🏢_Suppliers.py
+# Autenticazione
 if not login_page(form_key="login_suppliers"):
     st.stop()
 
@@ -29,37 +29,36 @@ DOMAIN_COLORS = {
     'telecomunicazioni': '#f39c12'
 }
 
+# Directory base
+BASE_DIR = Path(__file__).parent.parent
+DATA_DIR = BASE_DIR / 'data'
+
 # Caricamento dati
 @st.cache_data
 def load_data():
-    suppliers = pd.read_csv(r'C:\code\telco-dashboard\data\suppliers.csv')
-    contracts = pd.read_csv(r'C:\code\telco-dashboard\data\contracts.csv')
-    items = pd.read_csv(r'C:\code\telco-dashboard\data\items.csv')
+    suppliers = pd.read_csv(DATA_DIR / 'suppliers.csv')
+    contracts = pd.read_csv(DATA_DIR / 'contracts.csv')
+    items = pd.read_csv(DATA_DIR / 'items.csv')
     return suppliers, contracts, items
 
 suppliers_df, contracts_df, items_df = load_data()
 
-# Calcolo statistiche per fornitore
+# Calcolo statistiche
 @st.cache_data
 def calculate_supplier_stats(suppliers_df, contracts_df):
     stats = []
     
     for idx, supplier in suppliers_df.iterrows():
-        # Estrai il numero dall'ID (rimuovi prefisso "supplier_")
         supplier_id_num = str(supplier['id']).replace('supplier_', '')
         
-        # Prova matching con supplier_id nei contratti
         supplier_contracts = contracts_df[contracts_df['supplier_id'].astype(str) == supplier_id_num]
         
-        # Se non trova, prova con display_name
         if len(supplier_contracts) == 0:
             supplier_contracts = contracts_df[contracts_df['supplier'] == supplier['display_name']]
         
-        # Se non trova, prova con canonical_name
         if len(supplier_contracts) == 0:
             supplier_contracts = contracts_df[contracts_df['supplier'] == supplier['canonical_name']]
         
-        # Se ancora non trova, prova con supplier_name
         if len(supplier_contracts) == 0:
             supplier_contracts = contracts_df[contracts_df['supplier'] == supplier['supplier_name']]
         
@@ -120,7 +119,7 @@ with col_f1:
 
 with col_f2:
     spec_list = ['Tutti'] + sorted(suppliers_df['specialization'].dropna().unique().tolist())
-    selected_spec = st.selectbox("📁 Specializzazione", spec_list)
+    selected_spec = st.selectbox("🏷️ Specializzazione", spec_list)
 
 with col_f3:
     sort_by = st.selectbox("🔄 Ordina per", ["Nome", "Valore Contratti", "N° Contratti"])
@@ -137,7 +136,6 @@ if search_name:
 if selected_spec != 'Tutti':
     filtered_suppliers = filtered_suppliers[filtered_suppliers['specialization'] == selected_spec]
 
-# Ordinamento
 if sort_by == "Nome":
     filtered_suppliers = filtered_suppliers.sort_values('display_name')
 elif sort_by == "Valore Contratti":
@@ -184,7 +182,6 @@ with col_viz2:
     fig_spec.update_traces(textposition='inside', textinfo='percent+label')
     st.plotly_chart(fig_spec, use_container_width=True)
 
-# Seconda riga visualizzazioni
 col_viz3, col_viz4 = st.columns(2)
 
 with col_viz3:
@@ -227,16 +224,14 @@ st.markdown("---")
 # Mappa Geografica
 st.subheader("🗺️ Distribuzione Geografica Fornitori")
 
-# Funzione per geocoding
 @st.cache_data
 def geocode_address(address):
-    """Geocodifica un indirizzo"""
     if pd.isna(address) or address == '':
         return None, None
     
     try:
         geolocator = Nominatim(user_agent="contract_dashboard")
-        time.sleep(1)  # Rate limiting
+        time.sleep(1)
         location = geolocator.geocode(address, timeout=10)
         if location:
             return location.latitude, location.longitude
@@ -245,13 +240,11 @@ def geocode_address(address):
     
     return None, None
 
-# Filtra fornitori con indirizzo
 suppliers_with_address = suppliers_df[suppliers_df['address'].notna() & (suppliers_df['address'] != '')].copy()
 
 if len(suppliers_with_address) > 0:
     st.info(f"📍 Trovati {len(suppliers_with_address)} fornitori con indirizzo")
     
-    # Geocoding
     with st.spinner("🌍 Geocodifica indirizzi in corso..."):
         coords = []
         for idx, row in suppliers_with_address.iterrows():
@@ -261,21 +254,17 @@ if len(suppliers_with_address) > 0:
         suppliers_with_address['lat'] = [c['lat'] for c in coords]
         suppliers_with_address['lon'] = [c['lon'] for c in coords]
     
-    # Filtra solo quelli geocodificati con successo
     suppliers_mapped = suppliers_with_address.dropna(subset=['lat', 'lon'])
     
     if len(suppliers_mapped) > 0:
         st.success(f"✅ Geocodificati {len(suppliers_mapped)} fornitori")
         
-        # Crea mappa
         center_lat = suppliers_mapped['lat'].mean()
         center_lon = suppliers_mapped['lon'].mean()
         
         m = folium.Map(location=[center_lat, center_lon], zoom_start=6)
         
-        # Aggiungi marker per ogni fornitore
         for idx, row in suppliers_mapped.iterrows():
-            # Trova stats del fornitore
             supplier_stat = supplier_stats[supplier_stats['id'] == row['id']]
             
             if len(supplier_stat) > 0:
@@ -294,7 +283,6 @@ if len(suppliers_with_address) > 0:
                 Indirizzo: {row['address']}
                 """
             
-            # Colore marker per specializzazione
             color = DOMAIN_COLORS.get(row['specialization'], 'gray')
             
             folium.CircleMarker(
@@ -315,16 +303,14 @@ else:
 
 st.markdown("---")
 
-# Tabella Fornitori Master
+# Tabella Fornitori
 st.subheader("📋 Tabella Fornitori")
 
-# Preparazione dati per visualizzazione
 display_suppliers = filtered_suppliers.copy()
 display_suppliers['total_value_fmt'] = display_suppliers['total_value'].apply(
     lambda x: f"€{x:,.2f}" if pd.notna(x) and x > 0 else "€0.00"
 )
 
-# Merge con suppliers_df per avere tutte le info
 display_suppliers = display_suppliers.merge(
     suppliers_df[['id', 'known_technologies', 'typical_categories']],
     on='id',
@@ -360,7 +346,6 @@ if len(filtered_suppliers) > 0:
     )
     
     if selected_supplier_id:
-        # Recupera dati completi del fornitore
         supplier_detail = suppliers_df[suppliers_df['id'] == selected_supplier_id].iloc[0]
         supplier_stat_detail = supplier_stats[supplier_stats['id'] == selected_supplier_id].iloc[0]
         
@@ -396,7 +381,6 @@ if len(filtered_suppliers) > 0:
                     avg_value = supplier_stat_detail['total_value'] / supplier_stat_detail['n_contracts']
                     st.metric("Valore Medio", f"€{avg_value:,.2f}")
             
-            # Varianti nome
             st.markdown("##### 🔤 Varianti Nome")
             if pd.notna(supplier_detail['name_variants']):
                 variants = supplier_detail['name_variants'].split('|')
@@ -409,7 +393,6 @@ if len(filtered_suppliers) > 0:
             else:
                 st.write("Nessuna variante disponibile")
             
-            # Lista contratti del fornitore
             st.markdown("##### 📋 Contratti Associati")
             
             supplier_contracts = contracts_df[
@@ -442,7 +425,6 @@ if len(filtered_suppliers) > 0:
             else:
                 st.info("Nessun contratto trovato per questo fornitore")
             
-            # Trend storico
             if len(supplier_contracts) > 1:
                 st.markdown("##### 📈 Trend Storico")
                 
@@ -483,7 +465,6 @@ with col_exp2:
         output = BytesIO()
         
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            # Sheet 1: Fornitori con statistiche
             export_data = supplier_stats.merge(
                 suppliers_df[['id', 'address', 'known_technologies', 'typical_categories']],
                 on='id',
@@ -491,7 +472,6 @@ with col_exp2:
             )
             export_data.to_excel(writer, sheet_name='Fornitori', index=False)
             
-            # Sheet 2: Dettaglio contratti per fornitore
             contracts_export = contracts_df[['contract_id', 'supplier', 'contract_subject', 
                                             'start_date', 'end_date', 'total_amount']]
             contracts_export.to_excel(writer, sheet_name='Contratti per Fornitore', index=False)

@@ -8,7 +8,8 @@ from pathlib import Path
 
 def load_config():
     """Carica la configurazione dal file config.yml"""
-    config_path = r"C:\code\telco-dashboard\config.yml"
+    # Usa percorso relativo
+    config_path = Path(__file__).parent / "config.yml"
     try:
         with open(config_path, "r", encoding="utf-8") as file:
             config = yaml.load(file, Loader=SafeLoader)

@@ -12,7 +12,7 @@ from auth import login_page, logout_button
 
 st.set_page_config(page_title="Items", page_icon="📦", layout="wide")
 
-# pages/3_📦_Items.py
+# Autenticazione
 if not login_page(form_key="login_items"):
     st.stop()
 
@@ -31,20 +31,24 @@ CONFIDENCE_COLORS = {
     'LOW': '#e74c3c'
 }
 
+# Directory base
+BASE_DIR = Path(__file__).parent.parent
+DATA_DIR = BASE_DIR / 'data'
+
 # Caricamento dati
 @st.cache_data
 def load_data():
-    items = pd.read_csv(r'CC:\code\telco-dashboard\data\items.csv')
-    contracts = pd.read_csv(r'C:\code\telco-dashboard\data\contracts.csv')
+    items = pd.read_csv(DATA_DIR / 'items.csv')
+    contracts = pd.read_csv(DATA_DIR / 'contracts.csv')
     return items, contracts
 
 items_df, contracts_df = load_data()
 
-# Caricamento validazioni (se esistono)
-VALIDATION_FILE = 'validated_items.json'
+# Caricamento validazioni
+VALIDATION_FILE = BASE_DIR / 'validated_items.json'
 
 def load_validations():
-    if Path(VALIDATION_FILE).exists():
+    if VALIDATION_FILE.exists():
         with open(VALIDATION_FILE, 'r') as f:
             return json.load(f)
     return {}
@@ -55,10 +59,9 @@ def save_validation(item_id, validation_data):
     with open(VALIDATION_FILE, 'w') as f:
         json.dump(validations, f, indent=2)
 
-# Carica validazioni esistenti
 validations = load_validations()
 
-# Applica validazioni ai dati
+# Applica validazioni
 items_display = items_df.copy()
 for item_id, val_data in validations.items():
     mask = items_display['item_id'].astype(str) == item_id
@@ -109,7 +112,6 @@ with col_f2:
     selected_l1 = st.selectbox("Classificazione L1", l1_classes)
 
 with col_f3:
-    # Filtra L2 in base a L1 selezionato
     if selected_l1 != 'Tutti':
         l2_classes = ['Tutti'] + sorted(items_df[items_df['class_l1'] == selected_l1]['class_l2'].dropna().unique().tolist())
     else:
@@ -117,7 +119,6 @@ with col_f3:
     selected_l2 = st.selectbox("Classificazione L2", l2_classes)
 
 with col_f4:
-    # Filtra L3 in base a L2 selezionato
     if selected_l2 != 'Tutti':
         l3_classes = ['Tutti'] + sorted(items_df[items_df['class_l2'] == selected_l2]['class_l3'].dropna().unique().tolist())
     elif selected_l1 != 'Tutti':
@@ -220,7 +221,6 @@ with tab_viz1:
 with tab_viz2:
     st.markdown("##### Sunburst - Classificazione Gerarchica")
     
-    # Prepara dati per sunburst
     sunburst_data = filtered_items[['class_l1', 'class_l2', 'class_l3', 'total_price']].dropna()
     
     if len(sunburst_data) > 0:
@@ -271,7 +271,7 @@ with tab_viz3:
 
 st.markdown("---")
 
-# Quality Check Section
+# Quality Check
 st.subheader("🔍 Quality Check")
 
 col_q1, col_q2, col_q3 = st.columns(3)
@@ -288,7 +288,6 @@ with col_q3:
     validated_count = len(items_display[items_display['validated'] == True])
     st.metric("✅ Validati", validated_count)
 
-# Items da validare
 if low_conf_count > 0:
     with st.expander("📋 Items con Low Confidence da Validare"):
         low_conf_items = items_display[items_display['class_confidence_level'] == 'LOW']
@@ -300,18 +299,15 @@ if low_conf_count > 0:
 
 st.markdown("---")
 
-# Sistema di Validazione Manuale
+# Sistema di Validazione
 st.subheader("✏️ Sistema di Validazione Manuale")
 
 st.info("💡 Seleziona un item dalla tabella sottostante per correggere la classificazione")
 
-# Tabella Items Dettagliata
 st.markdown("##### 📋 Tabella Completa Items")
 
-# Preparazione dati per visualizzazione
 display_data = filtered_items.copy()
 
-# Badge
 type_emoji = {'HARDWARE': '🔵', 'SOFTWARE': '🟣', 'SERVICE': '🟠'}
 display_data['type_badge'] = display_data['item_type'].apply(
     lambda x: f"{type_emoji.get(x, '')} {x}" if pd.notna(x) else "N/A"
@@ -326,7 +322,6 @@ display_data['validated_badge'] = display_data['validated'].apply(
     lambda x: "✅ Si" if x else "⏳ No"
 )
 
-# Formattazione prezzi
 display_data['total_price_fmt'] = display_data['total_price'].apply(
     lambda x: f"€{x:,.2f}" if pd.notna(x) else "N/A"
 )
@@ -348,7 +343,6 @@ st.dataframe(
     height=400
 )
 
-# Form di validazione
 st.markdown("---")
 st.markdown("##### ✏️ Form di Validazione")
 
@@ -375,7 +369,7 @@ with col_form2:
 if item_to_validate:
     selected_item = filtered_items[filtered_items['item_id'] == item_to_validate].iloc[0]
     
-    st.markdown("**📝 Item Selezionato:**")
+    st.markdown("**🔍 Item Selezionato:**")
     st.info(f"{selected_item['item_description']}")
     
     col_curr1, col_curr2, col_curr3 = st.columns(3)
@@ -401,18 +395,15 @@ if item_to_validate:
                 index=['HARDWARE', 'SOFTWARE', 'SERVICE'].index(selected_item['item_type']) if pd.notna(selected_item['item_type']) else 0
             )
             
-            # Classificazione L1
             l1_options = items_df['class_l1'].dropna().unique().tolist()
             current_l1_idx = l1_options.index(selected_item['class_l1']) if pd.notna(selected_item['class_l1']) and selected_item['class_l1'] in l1_options else 0
             new_l1 = st.selectbox("Classe L1", l1_options, index=current_l1_idx)
         
         with col_val2:
-            # Classificazione L2
             l2_options = items_df['class_l2'].dropna().unique().tolist()
             current_l2_idx = l2_options.index(selected_item['class_l2']) if pd.notna(selected_item['class_l2']) and selected_item['class_l2'] in l2_options else 0
             new_l2 = st.selectbox("Classe L2", l2_options, index=current_l2_idx)
             
-            # Classificazione L3
             l3_options = items_df['class_l3'].dropna().unique().tolist()
             current_l3_idx = l3_options.index(selected_item['class_l3']) if pd.notna(selected_item['class_l3']) and selected_item['class_l3'] in l3_options else 0
             new_l3 = st.selectbox("Classe L3", l3_options, index=current_l3_idx)
@@ -453,7 +444,6 @@ with col_exp2:
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             filtered_items.to_excel(writer, sheet_name='Items', index=False)
             
-            # Sheet validazioni
             if len(validations) > 0:
                 val_df = pd.DataFrame.from_dict(validations, orient='index')
                 val_df.to_excel(writer, sheet_name='Validazioni')
