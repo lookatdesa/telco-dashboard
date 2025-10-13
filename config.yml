@@ -3,7 +3,7 @@ credentials:
     user:
       email: user@kearney.com
       name: user
-      password: $2b$12$Ho9d8AgdOeMj/OQIC/DnsOicHgqtueAct7KTH9dpuJktyTVyaT1Su  # z4O`0+40NjrX
+      password: $2b$12$Ho9d8AgdOeMj/OQIC/DnsOicHgqtueAct7KTH9dpuJktyTVyaT1Su 
 
 cookie:
   expiry_days: 30
