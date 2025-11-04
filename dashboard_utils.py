@@ -99,6 +99,10 @@ CATEGORY_ICONS = {
 # DATA LOADING AND CACHING
 # ============================================================================
 
+# Directory base
+BASE_DIR = Path(__file__).parent.parent
+DATA_DIR = BASE_DIR / 'data'
+
 @st.cache_data
 def load_data():
     """
@@ -108,9 +112,9 @@ def load_data():
         tuple: (items_df, suppliers_df, contracts_df)
     """
     try:
-        items_df = pd.read_csv("\data\items.csv")
-        suppliers_df = pd.read_csv("\data\suppliers.csv") 
-        contracts_df = pd.read_csv("\data\contracts.csv")
+        contracts = pd.read_csv(DATA_DIR / 'contracts.csv')
+        items = pd.read_csv(DATA_DIR / 'items.csv')
+        suppliers = pd.read_csv(DATA_DIR / 'suppliers.csv')
         
         return items_df, suppliers_df, contracts_df
     except FileNotFoundError as e:
