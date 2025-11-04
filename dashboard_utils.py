@@ -112,9 +112,9 @@ def load_data():
         tuple: (items_df, suppliers_df, contracts_df)
     """
     try:
-        contracts = pd.read_csv(DATA_DIR / 'contracts.csv')
-        items = pd.read_csv(DATA_DIR / 'items.csv')
-        suppliers = pd.read_csv(DATA_DIR / 'suppliers.csv')
+        contracts_df = pd.read_csv(DATA_DIR / 'contracts.csv')
+        items_df = pd.read_csv(DATA_DIR / 'items.csv')
+        suppliers_df = pd.read_csv(DATA_DIR / 'suppliers.csv')
         
         return items_df, suppliers_df, contracts_df
     except FileNotFoundError as e:
