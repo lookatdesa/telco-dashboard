@@ -1,20 +1,6 @@
-# Core
-streamlit>=1.36.0
+streamlit>=1.28.0
+plotly>=5.15.0
 pandas>=2.0.0
 numpy>=1.24.0
-
-# Visualizzazione
-plotly>=5.18.0
-altair>=5.0.0
-
-# Autenticazione - VERSIONE SPECIFICA per evitare breaking changes
-streamlit-authenticator==0.3.3
-
-# File handling
 openpyxl>=3.1.0
-xlsxwriter>=3.1.0
-
-# Geolocalizzazione (per la pagina Suppliers)
-folium>=0.15.0
-streamlit-folium>=0.15.0
-geopy>=2.4.0
+pathlib
